@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSV Consolidator</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #1a1a2e;
+  --surface: #16213e;
+  --surface2: #0f3460;
+  --accent: #e94560;
+  --accent-hover: #ff6b81;
+  --text: #eee;
+  --text-dim: #aab;
+  --success: #2ecc71;
+  --warn: #f39c12;
+  --danger: #e74c3c;
+  --border: #2a2a4a;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 0;
+}
+
+header {
+  background: var(--surface);
+  border-bottom: 2px solid var(--accent);
+  padding: 1.2rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+header h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+header .subtitle {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  background: var(--surface);
+  margin-bottom: 1.5rem;
+}
+
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: var(--accent);
+  background: rgba(233, 69, 96, 0.05);
+}
+
+.drop-zone h2 {
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.drop-zone p {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btn-success {
+  background: var(--success);
+  color: #fff;
+}
+
+.btn-success:hover:not(:disabled) {
+  background: #27ae60;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #c0392b;
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-outline:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.file-list {
+  margin-bottom: 1.5rem;
+}
+
+.file-list h3 {
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+  color: var(--text-dim);
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.file-item.incompatible {
+  border-color: var(--danger);
+  background: rgba(231, 76, 60, 0.08);
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.file-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.file-details {
+  min-width: 0;
+}
+
+.file-name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-meta {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.file-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.badge {
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-ok {
+  background: rgba(46, 204, 113, 0.15);
+  color: var(--success);
+}
+
+.badge-warn {
+  background: rgba(243, 156, 18, 0.15);
+  color: var(--warn);
+}
+
+.badge-error {
+  background: rgba(231, 76, 60, 0.15);
+  color: var(--danger);
+}
+
+.schema-display {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.85rem;
+}
+
+.schema-display h3 {
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-dim);
+}
+
+.schema-columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.schema-col {
+  background: var(--surface2);
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.8rem;
+}
+
+.actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.stats {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  min-width: 140px;
+}
+
+.stat-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin-top: 0.2rem;
+}
+
+.table-wrapper {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: auto;
+  max-height: 60vh;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+th {
+  background: var(--surface2);
+  padding: 0.7rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+  border-bottom: 2px solid var(--accent);
+}
+
+td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+tr:hover td {
+  background: rgba(233, 69, 96, 0.04);
+}
+
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 500px;
+  width: 90%;
+}
+
+.modal h3 {
+  margin-bottom: 1rem;
+}
+
+.modal p {
+  margin-bottom: 1rem;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.preview-rows {
+  background: var(--bg);
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  max-height: 200px;
+  overflow: auto;
+  font-family: monospace;
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>CSV Consolidator</h1>
+    <div class="subtitle">Strict Union &amp; Deduplication Tool</div>
+  </div>
+</header>
+
+<div class="container">
+  <div class="drop-zone" id="dropZone">
+    <h2>Drop CSV files here or click to browse</h2>
+    <p>Select multiple files at once, or add files in batches. All files must share an identical schema.</p>
+    <input type="file" id="fileInput" accept=".csv" multiple hidden>
+  </div>
+
+  <div id="schemaSection" class="schema-display hidden">
+    <h3>Established Schema (columns must match exactly)</h3>
+    <div class="schema-columns" id="schemaColumns"></div>
+  </div>
+
+  <div id="fileListSection" class="file-list hidden">
+    <h3>Loaded Files</h3>
+    <div id="fileListContainer"></div>
+  </div>
+
+  <div id="actionsSection" class="actions-bar hidden">
+    <button class="btn btn-primary" id="processBtn" disabled>Consolidate &amp; Deduplicate</button>
+    <button class="btn btn-outline" id="clearBtn">Clear All</button>
+  </div>
+
+  <div id="resultsSection" class="hidden">
+    <div class="stats" id="statsContainer"></div>
+    <div class="actions-bar">
+      <button class="btn btn-success" id="exportBtn">Export Consolidated CSV</button>
+    </div>
+    <div class="table-wrapper" id="tableWrapper"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="headerModal">
+  <div class="modal">
+    <h3>Confirm Header Row</h3>
+    <p>Does the first row of <strong id="modalFileName"></strong> contain column headers?</p>
+    <div class="preview-rows" id="modalPreview"></div>
+    <p id="modalSchemaWarning" class="hidden" style="color: var(--danger);"></p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="modalCancel">Cancel</button>
+      <button class="btn btn-outline" id="modalNoHeader">No (data starts at row 1)</button>
+      <button class="btn btn-primary" id="modalYesHeader">Yes (row 1 is header)</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="incompatibleModal">
+  <div class="modal">
+    <h3 style="color: var(--danger);">Incompatible File Detected</h3>
+    <p id="incompatibleMsg"></p>
+    <div id="incompatibleDetails" style="margin-bottom:1rem;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="incompatibleOk">Reject File</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  const state = {
+    schema: null,
+    files: [],
+    consolidatedData: null
+  };
+
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const schemaSection = document.getElementById('schemaSection');
+  const schemaColumns = document.getElementById('schemaColumns');
+  const fileListSection = document.getElementById('fileListSection');
+  const fileListContainer = document.getElementById('fileListContainer');
+  const actionsSection = document.getElementById('actionsSection');
+  const processBtn = document.getElementById('processBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const resultsSection = document.getElementById('resultsSection');
+  const statsContainer = document.getElementById('statsContainer');
+  const exportBtn = document.getElementById('exportBtn');
+  const tableWrapper = document.getElementById('tableWrapper');
+  const headerModal = document.getElementById('headerModal');
+  const modalFileName = document.getElementById('modalFileName');
+  const modalPreview = document.getElementById('modalPreview');
+  const modalSchemaWarning = document.getElementById('modalSchemaWarning');
+  const incompatibleModal = document.getElementById('incompatibleModal');
+  const incompatibleMsg = document.getElementById('incompatibleMsg');
+  const incompatibleDetails = document.getElementById('incompatibleDetails');
+
+  function parseCSV(text) {
+    const rows = [];
+    let current = '';
+    let inQuotes = false;
+    let row = [];
+    const len = text.length;
+
+    for (let i = 0; i < len; i++) {
+      const ch = text[i];
+      const next = i + 1 < len ? text[i + 1] : '';
+
+      if (inQuotes) {
+        if (ch === '"') {
+          if (next === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuotes = false;
+          }
+        } else {
+          current += ch;
+        }
+      } else {
+        if (ch === '"') {
+          inQuotes = true;
+        } else if (ch === ',') {
+          row.push(current);
+          current = '';
+        } else if (ch === '\r' && next === '\n') {
+          row.push(current);
+          current = '';
+          if (row.length > 1 || row[0] !== '') rows.push(row);
+          row = [];
+          i++;
+        } else if (ch === '\n' || ch === '\r') {
+          row.push(current);
+          current = '';
+          if (row.length > 1 || row[0] !== '') rows.push(row);
+          row = [];
+        } else {
+          current += ch;
+        }
+      }
+    }
+
+    row.push(current);
+    if (row.length > 1 || row[0] !== '') rows.push(row);
+
+    return rows;
+  }
+
+  function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+  }
+
+  function escapeCSVField(field) {
+    const str = String(field);
+    if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+      return '"' + str.replace(/"/g, '""') + '"';
+    }
+    return str;
+  }
+
+  function rowToKey(row) {
+    return row.map(cell => String(cell)).join('\x00');
+  }
+
+  dropZone.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropZone.classList.add('drag-over');
+  });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    handleFiles(e.dataTransfer.files);
+  });
+  fileInput.addEventListener('change', e => {
+    handleFiles(e.target.files);
+    fileInput.value = '';
+  });
+
+  let pendingFiles = [];
+  let currentFileIndex = 0;
+
+  function handleFiles(fileList) {
+    const csvFiles = Array.from(fileList).filter(f =>
+      f.name.toLowerCase().endsWith('.csv')
+    );
+    if (csvFiles.length === 0) return;
+    pendingFiles = csvFiles;
+    currentFileIndex = 0;
+    processNextFile();
+  }
+
+  function processNextFile() {
+    if (currentFileIndex >= pendingFiles.length) return;
+    const file = pendingFiles[currentFileIndex];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const text = e.target.result;
+      const rows = parseCSV(text);
+      if (rows.length === 0) {
+        currentFileIndex++;
+        processNextFile();
+        return;
+      }
+      showHeaderModal(file, rows);
+    };
+    reader.readAsText(file);
+  }
+
+  function showHeaderModal(file, rows) {
+    modalFileName.textContent = file.name;
+    modalSchemaWarning.classList.add('hidden');
+
+    const previewLines = rows.slice(0, 5).map((r, i) =>
+      `Row ${i + 1}: ${r.join(', ')}`
+    ).join('\n');
+    modalPreview.textContent = previewLines;
+
+    headerModal.classList.add('active');
+
+    const cleanup = () => {
+      headerModal.classList.remove('active');
+      document.getElementById('modalYesHeader').onclick = null;
+      document.getElementById('modalNoHeader').onclick = null;
+      document.getElementById('modalCancel').onclick = null;
+    };
+
+    document.getElementById('modalYesHeader').onclick = () => {
+      cleanup();
+      addFileWithHeader(file, rows, true);
+    };
+
+    document.getElementById('modalNoHeader').onclick = () => {
+      cleanup();
+      addFileWithHeader(file, rows, false);
+    };
+
+    document.getElementById('modalCancel').onclick = () => {
+      cleanup();
+      currentFileIndex++;
+      processNextFile();
+    };
+  }
+
+  function addFileWithHeader(file, rows, hasHeader) {
+    let headers, dataRows;
+
+    if (hasHeader) {
+      headers = rows[0].map(h => h.trim());
+      dataRows = rows.slice(1);
+    } else {
+      headers = rows[0].map((_, i) => `Column_${i + 1}`);
+      dataRows = rows;
+    }
+
+    const expectedCols = headers.length;
+    const validRows = [];
+    let raggedCount = 0;
+    for (const row of dataRows) {
+      if (row.length === expectedCols) {
+        validRows.push(row);
+      } else {
+        raggedCount++;
+      }
+    }
+
+    if (state.schema === null) {
+      state.schema = headers;
+      renderSchema();
+      addFile(file, headers, validRows, raggedCount);
+    } else {
+      if (schemasMatch(state.schema, headers)) {
+        addFile(file, headers, validRows, raggedCount);
+      } else {
+        showIncompatibleModal(file, headers, () => {
+          currentFileIndex++;
+          processNextFile();
+        });
+        return;
+      }
+    }
+
+    currentFileIndex++;
+    processNextFile();
+  }
+
+  function schemasMatch(a, b) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (a[i] !== b[i]) return false;
+    }
+    return true;
+  }
+
+  function showIncompatibleModal(file, fileHeaders, onDismiss) {
+    incompatibleMsg.textContent =
+      `"${file.name}" has a different schema and cannot be loaded. The columns do not match the established schema.`;
+
+    let detailHTML = '<div style="font-size:0.8rem; font-family:monospace; margin-top:0.5rem;">';
+    detailHTML += '<div style="margin-bottom:0.5rem;"><strong style="color:var(--success);">Expected (' + state.schema.length + ' columns):</strong><br>';
+    detailHTML += state.schema.join(', ');
+    detailHTML += '</div>';
+    detailHTML += '<div><strong style="color:var(--danger);">Got (' + fileHeaders.length + ' columns):</strong><br>';
+    detailHTML += fileHeaders.join(', ');
+    detailHTML += '</div></div>';
+    incompatibleDetails.innerHTML = detailHTML;
+
+    incompatibleModal.classList.add('active');
+
+    document.getElementById('incompatibleOk').onclick = () => {
+      incompatibleModal.classList.remove('active');
+      onDismiss();
+    };
+  }
+
+  function addFile(file, headers, dataRows, raggedCount) {
+    state.files.push({
+      name: file.name,
+      size: file.size,
+      headers: headers,
+      rows: dataRows,
+      rowCount: dataRows.length,
+      raggedCount: raggedCount || 0
+    });
+    renderFileList();
+    updateProcessButton();
+    resultsSection.classList.add('hidden');
+    state.consolidatedData = null;
+  }
+
+  function removeFile(index) {
+    state.files.splice(index, 1);
+    if (state.files.length === 0) {
+      state.schema = null;
+      schemaSection.classList.add('hidden');
+    }
+    renderFileList();
+    updateProcessButton();
+    resultsSection.classList.add('hidden');
+    state.consolidatedData = null;
+  }
+
+  function renderSchema() {
+    schemaSection.classList.remove('hidden');
+    schemaColumns.innerHTML = state.schema.map(col =>
+      `<span class="schema-col">${escapeHTML(col)}</span>`
+    ).join('');
+  }
+
+  function renderFileList() {
+    if (state.files.length === 0) {
+      fileListSection.classList.add('hidden');
+      actionsSection.classList.add('hidden');
+      return;
+    }
+
+    fileListSection.classList.remove('hidden');
+    actionsSection.classList.remove('hidden');
+
+    fileListContainer.innerHTML = state.files.map((f, i) => {
+      const raggedNote = f.raggedCount > 0
+        ? `<span class="badge badge-warn">${f.raggedCount} ragged row${f.raggedCount > 1 ? 's' : ''} skipped</span>`
+        : '';
+      return `
+      <div class="file-item">
+        <div class="file-info">
+          <span class="file-icon">&#128196;</span>
+          <div class="file-details">
+            <div class="file-name">${escapeHTML(f.name)}</div>
+            <div class="file-meta">${f.rowCount.toLocaleString()} rows &middot; ${formatFileSize(f.size)}</div>
+          </div>
+        </div>
+        <div class="file-status">
+          ${raggedNote}
+          <span class="badge badge-ok">Compatible</span>
+          <button class="btn btn-danger" onclick="window._removeFile(${i})">Remove</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  window._removeFile = removeFile;
+
+  function updateProcessButton() {
+    processBtn.disabled = state.files.length === 0;
+  }
+
+  function escapeHTML(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  processBtn.addEventListener('click', () => {
+    consolidate();
+  });
+
+  clearBtn.addEventListener('click', () => {
+    state.schema = null;
+    state.files = [];
+    state.consolidatedData = null;
+    schemaSection.classList.add('hidden');
+    fileListSection.classList.add('hidden');
+    actionsSection.classList.add('hidden');
+    resultsSection.classList.add('hidden');
+  });
+
+  function consolidate() {
+    const seen = new Set();
+    const uniqueRows = [];
+    let totalInputRows = 0;
+    let duplicatesRemoved = 0;
+
+    for (const file of state.files) {
+      for (const row of file.rows) {
+        totalInputRows++;
+        const key = rowToKey(row);
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueRows.push(row);
+        } else {
+          duplicatesRemoved++;
+        }
+      }
+    }
+
+    state.consolidatedData = {
+      headers: state.schema,
+      rows: uniqueRows,
+      totalInputRows: totalInputRows,
+      duplicatesRemoved: duplicatesRemoved,
+      filesProcessed: state.files.length
+    };
+
+    renderResults();
+  }
+
+  function renderResults() {
+    const data = state.consolidatedData;
+    resultsSection.classList.remove('hidden');
+
+    statsContainer.innerHTML = `
+      <div class="stat-card">
+        <div class="stat-value">${data.filesProcessed}</div>
+        <div class="stat-label">Files Processed</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${data.totalInputRows.toLocaleString()}</div>
+        <div class="stat-label">Total Input Rows</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${data.duplicatesRemoved.toLocaleString()}</div>
+        <div class="stat-label">Duplicates Removed</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${data.rows.length.toLocaleString()}</div>
+        <div class="stat-label">Unique Rows</div>
+      </div>
+    `;
+
+    const maxPreviewRows = 500;
+    const showingAll = data.rows.length <= maxPreviewRows;
+    const displayRows = showingAll ? data.rows : data.rows.slice(0, maxPreviewRows);
+
+    let tableHTML = '<table><thead><tr>';
+    tableHTML += '<th>#</th>';
+    for (const h of data.headers) {
+      tableHTML += `<th>${escapeHTML(h)}</th>`;
+    }
+    tableHTML += '</tr></thead><tbody>';
+
+    for (let i = 0; i < displayRows.length; i++) {
+      tableHTML += '<tr>';
+      tableHTML += `<td>${i + 1}</td>`;
+      for (const cell of displayRows[i]) {
+        tableHTML += `<td title="${escapeHTML(String(cell))}">${escapeHTML(String(cell))}</td>`;
+      }
+      tableHTML += '</tr>';
+    }
+
+    tableHTML += '</tbody></table>';
+
+    if (!showingAll) {
+      tableHTML += `<div style="padding:1rem; text-align:center; color:var(--text-dim); font-size:0.85rem;">
+        Showing ${maxPreviewRows.toLocaleString()} of ${data.rows.length.toLocaleString()} rows. Export to see all data.
+      </div>`;
+    }
+
+    tableWrapper.innerHTML = tableHTML;
+    resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  exportBtn.addEventListener('click', () => {
+    if (!state.consolidatedData) return;
+    const data = state.consolidatedData;
+    let csv = data.headers.map(escapeCSVField).join(',') + '\n';
+    for (const row of data.rows) {
+      csv += row.map(escapeCSVField).join(',') + '\n';
+    }
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    a.download = `consolidated_${timestamp}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+})();
+</script>
+</body>
+</html>
